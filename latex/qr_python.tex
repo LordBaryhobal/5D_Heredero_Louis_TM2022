@@ -1,0 +1,163 @@
+\section{Application in Python}
+\label{sec:qr_python}
+
+In this section, we will look at my Python QR-Code generator implementation.
+For the sake of brevity, only some specific parts of the program will be commented.
+
+\subsection{Python features}
+\label{ssec:qr_py_features}
+
+The script takes advantage of several Python-specific features.
+
+\subsubsection{Dunder methods}
+\label{sssec:qr_py_dunder}
+
+The most important is the "dunder methods", short for "double underscore methods".
+These are special overridable methods used for builtin behaviors.\\
+For example, the \texttt{\_\_add\_\_}, \texttt{\_\_sub\_\_}, \texttt{\_\_mul\_\_}, \texttt{\_\_truediv\_\_} and \texttt{\_\_pow\_\_} methods respectively
+define the behavior of the "+", "-", "*", "/" and "**" operators.
+
+This is particulary useful to create the Galois field's arithmetic used for QR-Codes.
+For example, multiplication is defined by this method:
+
+\begin{minted}[frame=single]{python}
+def __mul__(self, n):
+    if self.val == 0 or n.val == 0:
+        return GF(0)
+
+    return GF.EXP[GF.LOG[self.val].val + GF.LOG[n.val].val].copy()
+\end{minted}
+
+where \texttt{val} is the element's value and \texttt{GF.LOG} and \texttt{GF.EXP} are arrays containing the values of exponents and logarithms for the field (see \autoref{ssec:qr_py_precomp}).
+
+\subsubsection{Anonymous functions}
+\label{sssec:qr_py_lambda}
+
+Anonymous, or lambda, functions are short unnamed functions. They are often used for very basic operations. In our case, they are utilized for masks.
+
+For example, the first mask is defined as \mintinline{python}{lambda x,y: (x+y)%2 == 0}, a function taking two arguments x and y and returning whether the coordinates should be masked or not.
+
+\subsection{Precomputed data}
+\label{ssec:qr_py_precomp}
+
+Some values related to the creation of QR-Codes are precomputed, such as the capacities for each data type or the number of error correction codewords, as determining them is done through reverse engineering and no simple direct formula can be established.
+These values are stored in text files (\texttt{error\_correction.txt} and \texttt{qr\_versions.txt}) and loaded into tables at the beginning of the scripts.
+
+Regarding Galois fields, all powers and logs are also calculated beforehand, for the sake of ease of use, using the following loops:
+
+\begin{minted}[frame=single]{python}
+class GF:
+    def __init__(self, val):
+        self.val = val
+    ...
+
+GF.EXP = [GF(0)]*512
+GF.LOG = [GF(0)]*256
+value = 1
+for exponent in range(255):
+    GF.LOG[value] = GF(exponent)
+    GF.EXP[exponent] = GF(value)
+    value = ((value << 1) ^ 285) if value > 127 else value << 1
+
+for i in range(255, 512):
+    GF.EXP[i] = GF.EXP[i-255].copy()
+\end{minted}
+
+Credits for this method goes to \citetitle{rs_for_coders}\cite[Multiplication with logarithms]{rs_for_coders}
+
+\subsection{Data placement}
+\label{ssec:qr_py_plcmt}
+
+One of the challenges to overcome was the data placement phase. To avoid lengthening this particular part, mathematical tricks are used.
+
+For visual aid, see figure \ref{fig:qr_plcmt_byte} in \autoref{ssec:qr_placement}.
+
+Before starting, the data bit string which will be placed is stored in a string variable named "\texttt{self.final\_data\_bits}". The position is set to the lower-right corner of the matrix.
+The matrix (\texttt{self.matrix}) is a 2D array in which -1 indicates a free module.
+
+A variable named \texttt{dir\_} is also set to -1 and is responsible to keep track wether we are going up or down. A variable \texttt{i} initialized to 0 will hold the index of the current bit to be placed. The variable \texttt{zigzag} manages the zigzag pattern.
+
+\begin{minted}[linenos=true,frame=single]{python}
+dir_ = -1  #-1 = up | 1 = down
+x, y = size-1, size-1
+i = 0
+zigzag = 0
+
+while x >= 0:
+    if self.matrix[y,x] == -1:
+        self.matrix[y,x] = self.final_data_bits[i]
+        i += 1
+
+    if ((dir_+1)/2 + zigzag)%2 == 0:
+        x -= 1
+
+    else:
+        y += dir_
+        x += 1
+
+    if y == -1 or y == size:
+        dir_ = -dir_
+        y += dir_
+        x -= 2
+
+    else:
+        zigzag = 1-zigzag
+
+    if x == 6:
+        x -= 1
+\end{minted}
+
+The algorithm runs until it reaches the left side (line 6).
+
+For each loop, if the module is free, the current bit is placed and \texttt{i} is incremented.
+
+If we are going up and \texttt{zigzag} equals 0, or if we are going down and zigzag equals 1, then we move to the left (line 11-12).\\
+Otherwise, we move forward in the current direction and one module to the right.
+
+If we reach the top or bottom side (current position is outside of the matrix), the direction is flipped, we come back one step and move to the left.
+
+Lines 26-27 make the placement entirely skip column 6, which is where the vertical timing pattern is located.
+
+Table \ref{tab:qr_py_plcmt} shows the evolution of the different variables during placement.
+
+\def\arraystretch{1.2}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|[2pt]c|c|c|c|[2pt]}
+    \tabucline[2pt]{c}
+    x & y & dir\_ & zigzag \\
+    \tabucline[2pt]{c}
+    20 & 20 & -1 & 0 \\
+    \hline
+    19 & 20 & -1 & 1 \\
+    \hline
+    20 & 19 & -1 & 0 \\
+    \hline
+    19 & 19 & -1 & 1 \\
+    \hline
+    20 & 18 & -1 & 0 \\
+    \hline
+    ... & ... & ... & ... \\
+    \hline
+    20 & 0 & -1 & 0 \\
+    \hline
+    19 & 0 & -1 & 1 \\
+    \hline
+    18 & 0 & 1 & 1 \\
+    \hline
+    17 & 0 & 1 & 0 \\
+    \hline
+    18 & 1 & 1 & 1 \\
+    \tabucline[2pt]{c}
+  \end{tabu}
+  \caption{QR-Code data placement algorithm}
+  \label{tab:qr_py_plcmt}
+\end{table}
+\def\arraystretch{1}
+
+\subsection{Mask evaluation}
+\label{ssec:qr_py_mask}
+
+Mask evaluation is quite straight-forward especially for criteria 1, 2 and 4 (see \autoref{sssec:qr_mask_eval})
+
+Criterion n° 3 is a bit more complex. To keep track of the patterns encountered in each row (or column), a \texttt{History} object is used. This object holds a list of widths of the different color zones.

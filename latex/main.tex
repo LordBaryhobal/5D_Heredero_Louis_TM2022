@@ -1,0 +1,122 @@
+\documentclass[10pt,a4paper]{report}
+\usepackage{geometry}
+%\usepackage[utf8]{inputenc} % Apprently not useful with LuaLaTeX
+\usepackage[T1]{fontenc}
+\usepackage[british]{babel}
+\usepackage{amsmath} % mathematical symbols
+\usepackage{amsfonts} % mathematical symbols
+\usepackage{amssymb} % mathematical symbols
+\usepackage{graphicx} % figures
+\usepackage{array} % for new column type
+\usepackage{tabu} % for custom line width in tables
+\usepackage{longtable} % multi-page tables
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{fancyhdr} % headers and footers
+\usepackage{lastpage}	% total page count
+\usepackage{float}
+\usepackage{multirow}
+\usepackage[bottom]{footmisc} % footnotes at the bottom of the page
+\usepackage{subcaption} % subfigures
+\usepackage{verbatim} % comment environment
+\usepackage[backend=bibtex]{biblatex}
+%\usepackage{bbding} % checkmark
+\usepackage{pifont} % checkmark and cross
+%\usepackage{nicematrix} % to fix colorcell overalpping borders
+\usepackage{hhline} % partial hline for long division
+\usepackage{minted} % python code highlight
+\usepackage[minted,breakable]{tcolorbox} % minted title
+\usepackage{csquotes} % localized quotes
+\usepackage{caption} % caption for side by side fig and tab
+
+\bibliography{db.bib}
+
+%THIS NEEDS TO BE LOADED AFTER `longtable` TO PREVENT CONFLICTS
+\usepackage{arydshln} % dashed lines in tables
+
+\usepackage{fontspec} % custom font
+\setmainfont{Ubuntu-R}[
+  BoldFont        = Ubuntu-B,
+  ItalicFont      = Ubuntu-RI,
+  BoldItalicFont  = Ubuntu-BI
+]
+\setmonofont{UbuntuMono-R}[
+  BoldFont        = UbuntuMono-B,
+  ItalicFont      = UbuntuMono-RI,
+  BoldItalicFont  = UbuntuMono-BI
+]
+
+\usepackage{hyperref}	% links
+\hypersetup{
+  pdftitle={Barcodes and QR-Codes},
+  pdfauthor={Louis Heredero},
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  filecolor=black,
+  urlcolor=blue
+}
+
+\pagestyle{fancy}
+\setlength{\headheight}{15pt}
+
+\renewcommand{\headrulewidth}{1pt}
+\fancyhead[L]{\leftmark}
+\fancyhead[C]{}
+\fancyhead[R]{\rightmark}
+
+\renewcommand{\footrulewidth}{1pt}
+\fancyfoot[L]{Louis Heredero 5D}
+\fancyfoot[C]{\thepage/\pageref{LastPage}}
+\fancyfoot[R]{September 2022}
+
+% Black cell for representing barcodes in tables
+\newcommand*{\bbar}{\cellcolor{black}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% Rotate table header
+\newcommand{\rot}[1]{\hspace{5pt}\rotatebox{90}{#1\hspace{10pt}}\hspace{5pt}}
+
+% Long division vertical bar
+\newcommand{\divline}[1]{\multicolumn{1}{|r}{#1}}
+
+% Hamming structure tick
+\definecolor{tickbg}{HTML}{DDFFDD}
+\definecolor{tickfg}{HTML}{005E00}
+\definecolor{paritybg}{HTML}{90FF90}
+\definecolor{tabgrey}{HTML}{EAECF0}
+\definecolor{crossbg}{HTML}{FFDDDD}
+\definecolor{crossfg}{HTML}{5E0000}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\newcommand{\tick}{\cellcolor{tickbg}\textcolor{tickfg}{\cmark}}
+\newcommand{\cross}{\cellcolor{crossbg}\textcolor{crossfg}{\xmark}}
+
+\newcommand{\ul}[1]{\underline{#1}}
+
+\newcommand*{\hreffn}[2]{\href{#1}{#2}\footnote{#1}}
+
+\begin{document}
+  \parindent=0cm
+  \parskip=0.5em
+  \include{title_toc}
+  \parskip=1em
+  \include{introduction}
+
+  \include{barcode_origin}
+  \include{barcode_functioning}
+  \include{barcode_python}
+
+  \include{qr_origin}
+  \include{qr_functioning}
+  \include{qr_python}
+
+  \include{error_correction}
+
+  \include{custom_code}
+
+  \include{conclusion}
+  \include{review}
+
+  \include{bibliography}
+  \include{appendix}
+\end{document}

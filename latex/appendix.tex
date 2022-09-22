@@ -1,0 +1,324 @@
+\appendix
+
+\chapter{Python code base display module}
+\label{app:base_py}
+
+\textbf{\emph{All figures, \LaTeX\  and Python files are available on the dedicated \hreffn{https://github.com/LordBaryhobal/5D\_Heredero\_Louis\_TM2022}{GitHub repository}}}
+
+\vspace{12pt}
+
+This module is used by the other generator scripts to display codes.
+
+\begin{tcolorbox}[breakable,colback=white,title=base.py]
+\begin{minted}{python}
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+This module provides a base class to display codes and enable saving
+
+(C) 2022 Louis Heredero  louis.heredero@edu.vs.ch
+"""
+
+import pygame
+
+class Base:
+  def __init__(self, width, height, caption):
+      pygame.init()
+
+      pygame.display.set_caption(caption)
+      self.w = pygame.display.set_mode([width, height])
+
+      self.controls([
+          "CTRL + S: save as",
+          "ESC: quit"
+      ])
+
+  def controls(self, controls, margin=2):
+      longest = max(list(map(len, controls))+[10])
+      print("┌─" + "─"*(longest+margin) + "─┐")
+
+      _ = "\x1b[1;4mControls:\x1b[0m"
+      _ += " "*(longest+margin-9)
+      print(f"│ " + _ + " │")
+      for c in controls:
+          print("│ " + " "*margin + c.ljust(longest) + " │")
+      print("└─" + "─"*(longest+margin) + "─┘")
+
+  def main(self):
+      pygame.display.flip()
+
+      stop = False
+      while not stop:
+          event = pygame.event.wait()
+          # ESC or close button -> quit
+          if event.type == pygame.QUIT:
+              stop = True
+
+          elif event.type == pygame.KEYDOWN:
+              if event.key == pygame.K_ESCAPE:
+                  stop = True
+
+              # CTRL+S -> save image
+              elif event.key == pygame.K_s and \
+                   event.mod & pygame.KMOD_CTRL:
+                  self.save()
+
+  def save(self):
+      path = input("Save as: ")
+      pygame.image.save(self.w, path)
+\end{minted}
+\end{tcolorbox}
+
+\chapter{Code 39 python implementation}
+\label{app:code39_py}
+
+\begin{tcolorbox}[breakable,colback=white,title=code39.py]
+\begin{minted}{python}
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+This module can generate Code-39 barcodes
+
+(C) 2022 Louis Heredero  louis.heredero@edu.vs.ch
+"""
+
+import pygame
+
+code39_dict = {
+    "A": "100001001", "B": "001001001",
+    "C": "101001000", "D": "000011001",
+    "E": "100011000", "F": "001011000",
+    "G": "000001101", "H": "100001100",
+    "I": "001001100", "J": "000011100",
+    "K": "100000011", "L": "001000011",
+    "M": "101000010", "N": "000010011",
+    "O": "100010010", "P": "001010010",
+    "Q": "000000111", "R": "100000110",
+    "S": "001000110", "T": "000010110",
+    "U": "110000001", "V": "011000001",
+    "W": "111000000", "X": "010010001",
+    "Y": "110010000", "Z": "011010000",
+    "0": "000110100", "1": "100100001",
+    "2": "001100001", "3": "101100000",
+    "4": "000110001", "5": "100110000",
+    "6": "001110000", "7": "000100101",
+    "8": "100100100", "9": "001100100",
+    " ": "011000100", "-": "010000101",
+    "$": "010101000", "%": "000101010",
+    ".": "110000100", "/": "010100010",
+    "+": "010001010", "*": "010010100"
+}
+
+def code39(text):
+    text = text.upper()
+    text = list(map(lambda c: code39_dict[c], text))
+    return "0".join(text)
+
+def draw_barcode(barcode, win):
+    barcode = list(map(int, barcode))
+    width = win.get_width()*0.8
+    height = win.get_height()*0.5
+    thicks = sum(barcode)
+    thins = len(barcode)-thicks
+    bar_w = width/(thicks*2+thins)
+
+    win.fill((255,255,255))
+    x = win.get_width()*0.1
+    y = win.get_height()*0.25
+
+    for i, c in enumerate(barcode):
+        w = 2*bar_w if c else bar_w
+        if i%2 == 0:
+            pygame.draw.rect(win, (0,0,0), [x, y, w, height])
+
+        x += w
+
+if __name__ == "__main__":
+    import base
+
+    b = base.Base(800, 500, "Code-39 barcode generator")
+
+    barcode = code39("*CODE-39*")
+    draw_barcode(barcode, b.w)
+
+    b.main()
+\end{minted}
+\end{tcolorbox}
+
+\chapter{EAN python implementation}
+\label{app:ean_py}
+
+\begin{tcolorbox}[breakable,colback=white,title=ean.py]
+\begin{minted}{python}
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+This module can generate EAN-8 and EAN-13 barcodes
+
+(C) 2022 Louis Heredero  louis.heredero@edu.vs.ch
+"""
+
+import pygame
+
+A = [
+    0b0001101,
+    0b0011001,
+    0b0010011,
+    0b0111101,
+    0b0100011,
+    0b0110001,
+    0b0101111,
+    0b0111011,
+    0b0110111,
+    0b0001011
+]
+
+# XOR 0b1111111
+C = list(map(lambda a: a^127, A))
+
+# Reverse bit order
+B = list(map(lambda c: int(f"{c:07b}"[::-1],2), C))
+
+ean13_patterns = [
+    "AAAAAA",
+    "AABABB",
+    "AABBAB",
+    "AABBBA",
+    "ABAABB",
+    "ABBAAB",
+    "ABBBAA",
+    "ABABAB",
+    "ABABBA",
+    "ABBABA"
+]
+
+def bin_list(n):
+    return list(map(int,f"{n:07b}"))
+
+def luhn(digits):
+    checksum = sum([
+        digits[-i-1]*(3-i%2*2)
+        for i in range(len(digits))
+    ])
+    ctrl_key = 10 - checksum%10
+    if ctrl_key == 10:
+        ctrl_key = 0
+
+    return ctrl_key
+
+def ean8(digits):
+    digits.append(luhn(digits))
+    elmts = []
+
+    elmts += [1,0,1] #delimiter
+    for digit in digits[:4]:
+        elmts += bin_list(A[digit])
+
+    elmts += [0,1,0,1,0] #middle delimiter
+    for digit in digits[4:]:
+        elmts += bin_list(C[digit])
+
+    elmts += [1,0,1] #delimiter
+    return elmts
+
+def ean13(digits):
+    pattern = ean13_patterns[digits[0]]
+    digits.append(luhn(digits))
+    elmts = []
+
+    elmts += [1,0,1] #delimiter
+    for d in range(1,7):
+        _ = A if pattern[d-1] == "A" else B
+        digit = digits[d]
+        elmts += bin_list(_[digit])
+
+    elmts += [0,1,0,1,0] #middle delimiter
+    for digit in digits[7:]:
+        elmts += bin_list(C[digit])
+
+    elmts += [1,0,1] #delimiter
+    return elmts
+
+def draw_barcode(barcode, win):
+    width = win.get_width()*0.8
+    height = win.get_height()*0.5
+    bar_w = width/len(barcode)
+    rnd_bar_w = round(bar_w)
+
+    win.fill((255,255,255))
+    x = win.get_width()*0.1
+    y = win.get_height()*0.25
+
+    for c in barcode:
+        if c:
+            pygame.draw.rect(win, (0,0,0), [x, y, rnd_bar_w, height])
+
+        x += bar_w
+
+if __name__ == "__main__":
+    import base
+
+    b = base.Base(800, 500, "EAN-8 / EAN-13 barcode generator")
+
+    #barcode = ean8([8,4,2,7,3,7,2])
+    barcode = ean13([9,7,8,2,9,4,0,6,2,1,0,5])
+
+    draw_barcode(barcode, b.w)
+
+    b.main()
+\end{minted}
+\end{tcolorbox}
+
+\chapter{QR-Code tables}
+\label{app:qr_tabs}
+
+\def\arraystretch{1.2}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|[2pt]c|c|[2pt]c|c|[2pt]c|c|[2pt]}
+    \tabucline[2pt]{-}
+    Index & Char & Index & Char & Index & Char \\
+    \hline
+    0 & 0 & 15 & F & 30 & U \\
+    \hline
+    1 & 1 & 16 & G & 31 & V \\
+    \hline
+    2 & 2 & 17 & H & 32 & W \\
+    \hline
+    3 & 3 & 18 & I & 33 & X \\
+    \hline
+    4 & 4 & 19 & J & 34 & Y \\
+    \hline
+    5 & 5 & 20 & K & 35 & Z \\
+    \hline
+    6 & 6 & 21 & L & 36 & \emph{space} \\
+    \hline
+    7 & 7 & 22 & M & 37 & \$ \\
+    \hline
+    8 & 8 & 23 & N & 38 & \% \\
+    \hline
+    9 & 9 & 24 & O & 39 & * \\
+    \hline
+    10 & A & 25 & P & 40 & + \\
+    \hline
+    11 & B & 26 & Q & 41 & - \\
+    \hline
+    12 & C & 27 & R & 42 & . \\
+    \hline
+    13 & D & 28 & S & 43 & / \\
+    \hline
+    14 & E & 29 & T & 44 & : \\
+    \tabucline[2pt]{-}
+  \end{tabu}
+  \caption{List of alphanumerical characters}
+  \label{tab:qr_alphanum}
+\end{table}
+\def\arraystretch{1}
+
+\input{appendices/qr_versions}
+
+% Rotated headers
+% https://tex.stackexchange.com/a/98439
+\input{appendices/error_correction}
+
+\input{appendices/alignment}

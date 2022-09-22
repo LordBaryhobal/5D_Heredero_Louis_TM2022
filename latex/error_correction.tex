@@ -1,0 +1,461 @@
+\chapter{Error detection and correction}
+\label{chap:err_corr}
+
+This chapter introduces two methods to create self-correcting messages: Hamming codes and Reed-Solomon codes. The former is based on parity bits while the latter takes advantage of advanced mathematical properties of modular arithmetic and polynomials.
+
+\section{Hamming Codes}
+\label{sec:hamming}
+
+When working with binary data, one way of checking if a received message is corrupted or not is to add a parity bit. The parity of a binary number is even if it has an even number of 1s and odd otherwise. A parity check bit is added such that the total parity of the number is even, i.e. 0 if it is already even, 1 otherwise.
+
+\def\arraystretch{1.2}
+\begin{center}
+  \begin{tabular}{|c|c|c|c|c||c|c}
+    \multicolumn{5}{c}{} & \multicolumn{1}{c}{parity bit} & \\
+    \cline{1-6}
+    bit 1 & bit 2 & bit 3 & bit 4 & bit 5 & bit 6 & \multirow{2}{*}{parity: even} \\
+    \cline{1-6}
+    1 & 1 & 0 & 0 & 1 & 1 & \\
+    \cline{1-6}
+  \end{tabular}
+\end{center}
+\def\arraystretch{1}
+
+With this, a single bit error (that is, one bit is wrong) is easy to detect because the parity of the message becomes odd.
+
+\def\arraystretch{1.2}
+\begin{center}
+  \begin{tabular}{|c|c|c|c|c|c|c}
+    \cline{1-6}
+    bit 1 & bit 2 & bit 3 & bit 4 & bit 5 & bit 6 & \multirow{2}{*}{parity: odd} \\
+    \cline{1-6}
+    1 & 1 & \textbf{1} & 0 & 1 & 1 & \\
+    \cline{1-6}
+  \end{tabular}
+\end{center}
+\def\arraystretch{1}
+
+However, a single parity bit doesn't provide enough information to allow locating the error or detecting multiple errors, because an even number of errors would keep an even parity overall.
+
+\def\arraystretch{1.2}
+\begin{center}
+  \begin{tabular}{|c|c|c|c|c|c|c}
+    \cline{1-6}
+    bit 1 & bit 2 & bit 3 & bit 4 & bit 5 & bit 6 & \multirow{2}{*}{parity: even} \\
+    \cline{1-6}
+    1 & 1 & \textbf{1} & 0 & \textbf{0} & 1 & \\
+    \cline{1-6}
+  \end{tabular}
+\end{center}
+\def\arraystretch{1}
+
+Hamming codes are a kind of parity check codes.
+Instead of using only one parity bit however, they include several so that locating becomes possible, as well as detecting (not always) multiple errors.
+
+When creating a Hamming code from a message, data first has to be split into blocks of a given size. For each block a certain number of parity bits is assigned. These two variables (blocksize and number of parity bits) determine the type of Hamming code.
+For example a Hamming code with 3 parity bits will form 7-bit blocks, meaning each block can hold 4 data bits. It can thus be called Hamming(7, 4).
+
+Smaller blocksizes allow more errors to be corrected, because each block can correct one error, but have a lower data density\footnote{data density is the ratio of data bits over blocksize}. On the other hand, larger blocksizes allow less errors to be corrected but have a higher data density.
+
+Hamming codes are created in such a way that when a bit is flipped, the parity bits indicate exactly where the error occured. For that, each position in the code which is a power of two is a parity bits. Then, each parity bit covers the parity of all bits at positions containing its power in their binary representation. For example, the parity bit at position 4 (0b\ul{1}00) covers bits 5 (0b\ul{1}01), 6 (0b\ul{1}10), 7 (0b\ul{1}11), 12 (0b1\ul{1}00), 13 (0b1\ul{1}01), 14 (0b1\ul{1}10), 15 (0b1\ul{1}11), ...
+
+Table \ref{tab:hamming_struct} taken from \citetitle{hamming_wiki}\cite{hamming_wiki} offers a good visual representation of this structure:
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \hline
+    \rowcolor{tabgrey} \multicolumn{2}{|c|}{Bit position} & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+    \hhline{-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+    \rowcolor{tabgrey} \multicolumn{2}{|c|}{Encoded data bits} & \cellcolor{paritybg} p1 & \cellcolor{paritybg} p2 & d1 & \cellcolor{paritybg} p4 & d2 & d3 & d4 & \cellcolor{paritybg} p8 & d5 & d6 & d7 & d8 & d9 & d10 & d11 \\
+    \hhline{-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+    \multirow{4}{*}{\shortstack{Parity\\ bit\\ coverage}} & \cellcolor{paritybg} p1 & \tick & & \tick & & \tick & & \tick & & \tick & & \tick & & \tick & & \tick \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+     & \cellcolor{paritybg} p2 & & \tick & \tick & & & \tick & \tick & & & \tick & \tick & & & \tick & \tick \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p4 & & & & \tick & \tick & \tick & \tick & & & & & \tick & \tick & \tick & \tick \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p8 & & & & & & & & \tick & \tick & \tick & \tick & \tick & \tick & \tick & \tick \\
+    \hline
+  \end{tabular}}
+  \caption{Hamming code structure}
+  \label{tab:hamming_struct}
+\end{table}
+\def\arraystretch{1}
+
+Here we can see that each data bit (d1, d2, d3, ...) is covered by a unique set of parity bits.
+
+\pagebreak
+
+Let's create a Hamming(15, 11) code for the message \texttt{11101100010}.
+The first step is to lay out the bits in table \ref{tab:hamming_struct} like so:
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \hline
+    \rowcolor{tabgrey} \multicolumn{2}{|c|}{Bit position} & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+    \hline
+    \multicolumn{2}{|c|}{\cellcolor{tabgrey} Encoded data bits} & p1 & p2 & 1 & p4 & 1 & 1 & 0 & p8 & 1 & 1 & 0 & 0 & 0 & 1 & 0 \\
+    \hline
+    \multirow{4}{*}{\shortstack{Parity\\ bit\\ coverage}} & \cellcolor{paritybg} p1 & - & & \tick & & \tick & & \cross & & \tick & & \cross & & \cross & & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+     & \cellcolor{paritybg} p2 & & - & \tick & & & \tick & \cross & & & \tick & \cross & & & \tick & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p4 & & & & - & \tick & \tick & \cross & & & & & \cross & \cross & \tick & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p8 & & & & & & & & - & \tick & \tick & \cross & \cross & \cross & \tick & \cross \\
+    \hline
+  \end{tabular}}
+
+  \medskip
+
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+    \rowcolor{tabgrey} Parity bit & Covered 1s & Parity of covered bits & Value \\
+    \hline
+    p1 & 3 & odd & 1 \\
+    \hline
+    p2 & 4 & even & 0 \\
+    \hline
+    p4 & 3 & odd & 1 \\
+    \hline
+    p8 & 3 & odd & 1 \\
+    \hline
+  \end{tabular}
+  \caption{Hamming code example}
+  \label{tab:hamming_ex}
+\end{table}
+\def\arraystretch{1}
+
+Placing the parity bits in their relevant positions, we get the hamming code \texttt{101111011100010}.
+
+%\bigskip
+
+To illustrate the decoding process, let's alter bit 11 and change it to a 1.
+Now, recalculating the parity bits and comparing the results with the received message, we can find the location of the error.
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!}{
+  \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+    \hline
+    \rowcolor{tabgrey} \multicolumn{2}{|c|}{Bit position} & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+    \hline
+    \multicolumn{2}{|c|}{\cellcolor{tabgrey} Received data bits} & 1 & 0 & 1 & 1 & 1 & 1 & 0 & 1 & 1 & 1 & \textbf{1} & 0 & 0 & 1 & 0 \\
+    \hline
+    \multirow{4}{*}{\shortstack{Parity\\ bit\\ coverage}} & \cellcolor{paritybg} p1 & - & & \tick & & \tick & & \cross & & \tick & & \tick & & \cross & & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+     & \cellcolor{paritybg} p2 & & - & \tick & & & \tick & \cross & & & \tick & \tick & & & \tick & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p4 & & & & - & \tick & \tick & \cross & & & & & \cross & \cross & \tick & \cross \\
+    \hhline{~|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|}
+      & \cellcolor{paritybg} p8 & & & & & & & & - & \tick & \tick & \tick & \cross & \cross & \tick & \cross \\
+    \hline
+  \end{tabular}}
+
+  \medskip
+
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \rowcolor{tabgrey} Parity bit & Covered 1s & Parity of covered bits & Value & Received value \\
+    \hline
+    p1 & 4 & even & 0 & 1 \\
+    \hline
+    p2 & 5 & odd & 1 & 0 \\
+    \hline
+    p4 & 3 & odd & 1 & 1 \\
+    \hline
+    p8 & 4 & even & 0 & 1 \\
+    \hline
+  \end{tabular}
+  \caption{Hamming code example decoding}
+  \label{tab:hamming_ex_decoding}
+\end{table}
+\def\arraystretch{1}
+
+The difference (XOR) between columns "Value" and "Received value" forms the binary number \texttt{0b1101} = 11, the location of the error.
+
+\section{Reed-Solomon algorithm}
+\label{sec:reed_solomon}
+
+The Reed-Solomon algorithm is a mathematical process allowing the decoding of a partially corrupted message. It is used in many domains for its strength and reliability, such as for spatial communication, CD/DVD players, some television broadcasts and QR-Codes.
+
+Reed-Solomon codes were developed by Irving S. Reed and Gustave Solomon in 1960 \cite{reed_solomon}
+
+As they rely on abstract and complex mathematical concepts, this section will not go in specific details about the actual decoding process. For curious readers, see
+\citetitle{computerphile_rs}\cite{computerphile_rs} (presentation, general concept), \citetitle{reed_solomon_wiki}\cite{reed_solomon_wiki} (in depth article) and \citetitle{nasa_rs}\cite{nasa_rs} (complete manual and explanations)
+
+\subsection{Error detection}
+\label{ssec:rs_error_detection}
+
+Before considering error correction, it is necessary to talk about error detection. Several methods have been developed for this purpose.
+
+The most basic, as seen in \autoref{sec:hamming}, is a parity check. It consists of appending one or more "parity bits" to a binary message, such that the overall parity is known. For example, let table \ref{tab:err_det_raw} be our raw message
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|cccccccc|}
+    \hline
+    0 & 1 & 0 & 0 & 0 & 0 & 1 & 1 \\
+    \hline
+  \end{tabu}
+  \caption{Error detection: raw message}
+  \label{tab:err_det_raw}
+\end{table}
+\def\arraystretch{1}
+
+The parity of this byte is odd -- because there are 3 1s -- so an additional 1 is added to the end.
+
+In this way, if the message is corrupted -- by 1 bit maximum -- it becomes even, and we know there is an error.
+Now obviously it doesn't provide any information on the exact location of the error in the message and can't detect an even number of errors.
+
+However, this principle can be extended to include a parity bit for every byte.
+If represented as a table in which each row is a byte, it can also include parity bits for each column.
+Table \ref{tab:err_det_tab} is an example of such usage of parity bits. This implementation is even able to correct a single error as the row and column would be odd.
+
+\def\arraystretch{1.4}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|[2pt]c|cccccccc|c|[2pt]}
+    \tabucline[2pt]{-}
+    & bit 0 & bit 1 & bit 2 & bit 3 & bit 4 & bit 5 & bit 6 & bit 7 & parity \\
+    \hline
+    byte 0 & 0 & 1 & 0 & 0 & 0 & 0 & 1 & 1 & 1 \\
+    byte 1 & 0 & 1 & 1 & 0 & 1 & 1 & 1 & 1 & 0 \\
+    byte 2 & 0 & 1 & 1 & 0 & 0 & 1 & 0 & 0 & 1 \\
+    byte 3 & 0 & 1 & 1 & 0 & 0 & 1 & 0 & 1 & 0 \\
+    byte 4 & 0 & 1 & 1 & 1 & 0 & 0 & 1 & 1 & 1 \\
+    \hline
+    parity & 0 & 1 & 0 & 1 & 1 & 1 & 1 & 0 & 1 \\
+    \tabucline[2pt]{-}
+  \end{tabu}
+  \caption{Error detection: bytes table parity}
+  \label{tab:err_det_tab}
+\end{table}
+\def\arraystretch{1}
+
+Such codes however don't provide enough error correction capability - at most 1 bit. Other methods, like the previously explained Hamming codes, allow a more efficient use of parity bits, increasing to some degree the number of fixable errors.
+
+Reed-Solomon codes use properties of polynomials and modular arithmetic to produce more efficient and more robust correction data.
+
+\subsection{Binary to polynomials}
+\label{ssec:rs_bin_to_poly}
+Instead of working directly with binary data, Reed-Solomon codes treat messages as polynomials.
+These are formed from binary data as follows: each byte is converted to a decimal integer, representing coefficients of the polynomial.
+
+For example:
+\def\arraystretch{1.4}
+\begin{tabu}{|[1pt]c|c|c|c|c|c|[1pt]}
+  \tabucline[1pt]{-}
+  raw binary & $01000011$ & $01101111$ & $01100100$ & $01100101$ & $01110011$ \\
+  \hline
+  decimal & $67$ & $111$ & $100$ & $101$ & $115$ \\
+  \hline
+  polynomial & \multicolumn{5}{c|[1pt]}{$67x^4 + 111x^3 + 100x^2 + 101x + 115$}\\
+  \tabucline[1pt]{-}
+\end{tabu}
+\def\arraystretch{1}
+
+\subsection{Galois Fields}
+\label{ssec:rs_galois}
+Since the main applications of Reed-Solomon codes are related to digital devices, it is relevant to use bits and bytes. As such, all calculations are performed in a Galois field. A Galois field is basicly a finite set of numbers on which arithmetic operations results in numbers of the set. In the case of QR-Codes, G(256) -- a Galois field of the integers 0 to 255 incl. -- is used. This means every operation between numbers results in a value between 0 and 255 incl., which is an eight-bit positive integer. In this field, addition and subtraction are equivalent and defined as the binary XOR operation. For example:
+
+\begin{gather*}
+  17 + 13 = 17 - 13 = 28 \\
+  \Leftrightarrow 0\text{b}10001 \oplus 0\text{b}1101 = 0\text{b}1101 \oplus 0\text{b}10001 = 0\text{b}11100
+\end{gather*}
+
+Multiplication is more complex though. One property of this Galois field is that every number can be represented as a power of two, XOR 285.
+For example:
+\begin{equation*}
+  \begin{split}
+    2^{17} =& (\underbrace{2^8}_{256} \oplus 285) * 2^9 = 29 * 2^9 \\
+         =& [\underbrace{(29 * 2^4)}_{464} \oplus 285] * 2^5 = 205 * 2^5 \\
+         =& [\underbrace{(205 * 2)}_{410} \oplus 285] * 2^4 = 135 * 2^4 \\
+         =& [\underbrace{(135 * 2)}_{270} \oplus 285] * 2^3 = 19 * 2^3 \\
+         =& 152 \\
+    \Rightarrow& \exp_2(17) = 152 \\
+    \Rightarrow& \log_2(152) = 17
+  \end{split}
+\end{equation*}
+
+To multiply two numbers $a$ and $b$ in the Galois field:\footnote{from now on, $\exp$ and $\log$ are assumed to be base 2} \[
+  a * b = \exp(\log(a) + \log(b))
+\]
+which also works in regular arithmetic (in $\mathbb{N}^*_+$).
+
+Division works similarly, but because there are no negative or fractional number in the field, the exponent is kept in the range 0-255 incl. like so: \[
+  \frac{a}{b} = \exp([\log(a) - \log(b) + 255]\ mod \ 255)
+\]
+
+And powers too: \[
+  a^b = \exp([\log(a) * b]\ mod\ 255)
+\]
+
+\subsection{Generating error correction}
+\label{ssec:rs_gen}
+To create Reed-Solomon error correction bytes, a generator polynomial $g(x)$ is needed.
+This polynomial is created using equation \ref{equ:rs_gen_poly}:
+\begin{equation}
+  g(x) = \prod_{i=0}^{d-1} (x + 2^i)
+  \label{equ:rs_gen_poly}
+\end{equation}
+
+where $d$ is one more than the degree of the polynomial, equivalent to the number of error correction bytes.
+
+Let $m(x)$ be our message polynomial (see \autoref{ssec:rs_bin_to_poly}) and $g(x)$ the generator polynomial. The error correction polynomial $E_c(x)$ is then the remainder of the long polynomial division $m(x)/g(x)$.
+
+Let's illustrate this by creating error correction for the string "Codes". In UTF-8, the message bytes are 67, 111, 100, 101, 115, thus $m(x) = 67x^4+ 111x^3+ 100x^2+ 101x+ 115$.
+% We will take the generator polynomial of degree 3, that is: \[
+%   g(x) = (x + 1)*(x + 2)*(x + 4)\\
+%   = x^3 + 7x^2 + 14x + 8
+% \]
+We will take the generator polynomial of degree 4, that is: \[
+  g(x) = (x + 1)*(x + 2)*(x + 4)*(x + 8)\\
+  = x^4 + 15x^3 + 54x^2 + 120x + 64
+\]
+
+And thus (reminder that addition and subtraction in the galois field is the binary XOR operation):
+\begin{comment}
+\[
+  \def\arraystretch{1.5}
+  \begin{array}{rrrrrrrrrrrrr}
+     67 &  111 &  100 & 101 &  115 &    0 &    0 &    0 &\divline{}&   1 &   7 & 14 &  8 \\
+    \cline{9-13}
+    -67 & -212 & -181 & -34 &      &      &      &      &       67 & 187 & 215 & 84 & 77 \\
+    \cline{1-4}
+        &  187 &  209 &  71 &  115 &      &      &      &          &     &     &    & \\
+        & -187 &   -6 & -12 & -177 &      &      &      &          &     &     &    & \\
+    \cline{2-5}
+        &      &  215 &  75 &  194 &    0 &      &      &          &     &     &    & \\
+        &      & -215 & -31 &  -52 & -246 &      &      &          &     &     &    & \\
+    \cline{3-6}
+        &      &      &  84 &  252 &  246 &    0 &      &          &     &     &    & \\
+        &      &      & -84 & -177 & -127 & -154 &      &          &     &     &    & \\
+    \cline{4-7}
+        &      &      &     &   77 &  137 &  154 &    0 &          &     &     &    & \\
+        &      &      &     &  -77 & -254 & -225 &  -82 &          &     &     &    & \\
+    \cline{5-8}
+        &      &      &     &      &  119 &  123 &   82 &          &     &     &    &
+  \end{array}
+  \def\arraystretch{1}
+\]
+\[
+  \Rightarrow E_c(x) = 119x^2 + 123x + 82
+\]
+\end{comment}
+
+\[
+  \def\arraystretch{1.5}
+  \begin{array}{rrrrrrrrrrrrrr}
+     67 &  111 &  100 &  101 &  115 &    0 &    0 &    0 &   0 &\divline{1}&  15 &  54 & 120 & 64 \\
+    \cline{10-14}
+    -67 & -246 &  -91 & -227 &  -13 &      &      &      &     &        67 & 153 & 107 &  43 & 8 \\
+    \cline{1-5}
+        &  153 &   63 &  134 &  126 &      &      &      &     &           &     &     &     & \\
+        & -153 &  -84 & -222 & -154 & -137 &      &      &     &           &     &     &     & \\
+    \cline{2-6}
+        &      &  107 &   88 &  228 &  137 &      &      &     &           &     &     &     & \\
+        &      & -107 & -115 & -120 & -191 & -223 &      &     &           &     &     &     & \\
+    \cline{3-7}
+        &      &      &   43 &  156 &   54 &  223 &      &     &           &     &     &     & \\
+        &      &      &  -43 & -148 & -121 & -212 &  -18 &     &           &     &     &     & \\
+    \cline{4-8}
+        &      &      &      &    8 &   79 &   11 &   18 &     &           &     &     &     & \\
+        &      &      &      &   -8 & -120 & -173 & -231 & -58 &           &     &     &     & \\
+    \cline{5-9}
+        &      &      &      &      &   55 &  166 &  245 &  58 &           &     &     &     &
+  \end{array}
+  \def\arraystretch{1}
+\]
+\[
+  \Rightarrow E_c(x) = 55x^3 + 166x^2 + 245x + 58
+\]
+
+Details of the first step:
+\begin{align*}
+  67 * 1 =& \exp(\log(67) + \log(1)) = \exp(98 + 0) = \exp(98) = 67\\
+  67 * 15 =& \exp(\log(67) + \log(15)) = \exp(98 + 75) = \exp(41) = 246\\
+  67 * 54 =& \exp(\log(67) + \log(54)) = \exp(98 + 249) = \exp(155) = 91\\
+  67 * 120 =& \exp(\log(67) + \log(120)) = \exp(98 + 78) = \exp(44) = 227\\
+  67 * 64 =& \exp(\log(67) + \log(64)) = \exp(98 + 6) = \exp(100) = 13
+\end{align*}
+
+%Then, to communicate our message, $E_c(x)$ is converted to binary and appended to our raw message data, in our case, the final message would be: 67, 111, 100, 101, 115, 119, 123, 82.
+Then, to communicate our message, $E_c(x)$ is converted to binary and appended to our raw message data, in our case, the final message would be: 67, 111, 100, 101, 115, 55, 166, 245, 58.
+
+This is the actual data sent by a device, or in the case of QR-Codes, the actual data encoded on the symbol. Let it be a polynomial named $s(x)$ (for sent data).
+
+Unfortunately, this is not always what is received by the recipient (or read by the scanner). Some interference may happen during transmission and data may be altered. Let the received data be the polynomial $r(x) = s(x) + e(x)$ (where $e(x)$ is the error polynomial).
+
+In the next section, we will outline the main steps and basic mathematical principles required for error correction and detection through the Reed-Solomon algorithm.
+
+\subsection{Detecting and correcting errors}
+\label{ssec:rs_error_correction}
+
+The first step to locating potential errors in a received Reed-Solomon code is to calculate its "syndrome polynomial" $S(x)$. The coefficient of the $i^{th}$ degree term of this polynomial is the value of $r(2^i)$ (the degree of $S(x)$ is equal to the number of error correction bytes minus 1, in our case 2). This means:
+
+\[
+  S(x) = \sum_{i=0}^{d-1} r(2^i) * x^i
+\]
+
+To illustrate the algorithm, we will take
+
+%\[ r(x) = 67x^7 + 111x^6 + \textbf{110}x^5 + 101x^4 + 115x^3 + 119x^2 + 123x + 82 \]
+%\[ \Rightarrow e(x) = 10x^5 \]
+\[ r(x) = 67x^8 + 111x^7 + \textbf{110}x^6 + 101x^5 + 115x^4 + \textbf{50}x^3 + 166x^2 + 245x + 58 \]
+\[ \Rightarrow e(x) = 10x^6 + 5x^3 \]
+
+%Thus, \[
+%  S(x) = 111x^2 + 93x + 10
+%\]
+Thus, \[
+  S(x) = 253x^3 + 252x^2 + 146x + 15
+\]
+
+Reed-Solomon codes provide a very useful mathematical property. In fact, if $s(x) = r(x) \Rightarrow e(x) = 0$, then $S(x) = 0$, enabling a fast return if there is no corruption.
+
+In the case where $S(x) \not= 0$, we need to compute two other polynomials, the locator and evaluator polynomials. The former helps determine positions of errors whilst the latter is used to find the magnitude of each error, that is, the difference with the real value.
+
+These can be found with the help of the euclidean algorithm. The exact methods used will not be described here as the mathematical implications behind them are much above the level of this work, but there functioning and alternatives are well documented in \citetitle{nasa_rs}\cite{nasa_rs} (from p.65, section 4.3.1).
+
+From our example, we would get the following polynomials:
+%\[ E_{locator}(x) = 32x + 1 \]
+%\[ E_{evalutor}(x) = 10 \]
+\[ E_{locator}(x) = 58x^2 + 72x + 1 \]
+\[ E_{evalutor}(x) = 13x + 15 \]
+
+\paragraph{Locator polynomial}
+
+Once the locator polynomial has been computed, it can be used to get the precise position of each error, as long as the number of errors is not greater than the correction capacity.
+
+The error location polynomial\footnote{not to be confused with the error locator polynomial} is first calculated from the locator polynomial using Chien search (not described here), a "fast algorithm for determining roots of polynomials defined over a finite field"\cite{wiki_chien_search}.
+
+In this polynomial, each coefficient's log (in the Galois field) is the byte index of an error in the received message (starting from the end) -- or degree of a wrong coefficient in $r(x)$.
+
+%Continuing the example, we obtain: \[ E_{location}(x) = 32 \]
+Continuing the example, we obtain: \[ E_{location}(x) = 64x + 8 \]
+
+\paragraph{Evaluator polynomial}
+
+Using the error location and evaluator polynomial in Forney's algorithm, it is possible to find the magnitude of each error, that is the coefficients of $e(x)$.
+
+%Our result: \[ E_{mag}(x) = 10 \]
+Our result: \[ E_{mag}(x) = 10x + 5 \]
+
+\paragraph{Correction}
+
+We now have all the information needed to correct the received message. For that, we need to add the magnitudes to their corresponding locations. Again, the locations are the logarithms of each coefficient in the error location polynomial and magnitudes are the coefficients of $E_{mag}$.
+
+Our example has two errors, since both $E_{location}$ and $E_{mag}$ are second degree polynomials.
+For the first error, we add $10$ to $r_6$ ($6$ being $\log(64)$).
+For the second error, we add $5$ to $r_3$ ($3$ being $\log(8)$).
+
+We can finally recover the original message: 67, 111, 100, 101, 115, 55, 166, 245, 58.

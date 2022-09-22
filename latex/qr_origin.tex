@@ -1,0 +1,72 @@
+\chapter{QR-Codes}
+\label{chap:qr_origin}
+
+\section{Origin}
+\label{sec:qr_origin}
+
+Eventhough barcodes have conquered the world, they still have some major issues.
+First of all, their capacity is rather limited, allowing only a maximum of about twenty characters to be encoded in a practical format.
+Secondly, they can only store a small group of characters, some even only numbers.
+And finally, they require the reading device to be in a roughly parallel orientation with respect to the code in order to read it.
+
+For these reasons, the Japanese company named DENSO WAVE started developing a new type of 2D code.
+Indeed, a barcode is one-dimensional - that is, the information is encoded on a single axis.
+What DENSO WAVE tried was a two-dimensional matrix of data.
+
+The result of their research and development became the well-known "QR-Code", which stands for Quick-Response code. They were first used in Toyota factories to track car parts\cite{qrcode_history}.
+With the desire to offer this technology to the largest number of people, the company decided not to keep it private but rather make it open-source.
+It later became a norm in many countries and is now specified by the ISO/IEC~18004 standard \cite{ISO18004}.
+
+QR-Codes address all the above-mentioned problems related to barcodes.
+
+\subsection*{Data type}
+
+They allow the encoding of either numbers, text, raw binary data and even Kanji characters\footnote{Kanji are the characters used to write Japanese}. Therefore they can be used in a great variety of contexts, for example to identify objects, to conviniently share a URL or even a small image.
+
+\subsection*{Information density}
+
+They allow dense information storage.
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|[2pt]c|c|[2pt]}
+    \tabucline[2pt]{-}
+    Type & Number of "characters" \\
+    \tabucline[2pt]{-}
+    Numerical & 7'089 \\
+    \hline
+    Alphanumerical & 4'296 \\
+    \hline
+    Bytes & 2'953 \\
+    \hline
+    Kanji & 1'817 \\
+    \tabucline[2pt]{-}
+  \end{tabu}
+  \caption{Maximum amount of data in a QR-Code \cite{ISO18004}}
+  \label{tab:qr_max_data}
+\end{table}
+\def\arraystretch{1}
+
+The alphanumerical type can only encode the following characters:
+\begin{center}
+  \texttt{0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ \$\%*+-./:}
+\end{center}
+
+\subsection*{Reading freedom}
+
+Thanks to finder patterns, they can be read in any orientation, even with perspective. Taking into account the great progress which happened during the last 30 years in the field of cameras and mobile phones, QR-Codes can now be scanned in a matter of milliseconds, no matter the angle of the camera.
+
+\subsection*{Error detection and correction}
+
+The other main advantage of QR-Codes is the embedded error detection and correction system.
+
+They come in four different levels of error correction:
+\begin{itemize}
+  \item L (low): 7\%
+  \item M (medium): 15\%
+  \item Q (quartile): 25\%
+  \item H (high): 30\%
+\end{itemize}
+
+A higher level indicates a greater amount of redundancy and an ability to recover a greater part of a damaged code. This principle is often used to add a custom icon at the center of the QR-Code, since the reader will still be able to scan it and reconstruct the hidden part.

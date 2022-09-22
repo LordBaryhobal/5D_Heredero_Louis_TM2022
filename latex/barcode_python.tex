@@ -1,0 +1,235 @@
+\section{Application in Python}
+\label{sec:barcode_python}
+
+In this section, we will implement barcode generation in Python. We will first program a "Code-39" encoder, then an EAN-8 and finally an EAN-13.
+
+\subsection{Code-39}
+\label{ssec:code39_py}
+
+This type of code being just a matter of translating each character to a particular group of wide and narrow stripes, the implementation is quite simple.
+
+We first create a dictionary holding the codes for each character.
+
+\begin{minted}[frame=single]{python}
+code39_dict = {
+    "A": "100001001", "B": "001001001",
+    "C": "101001000", "D": "000011001",
+    "E": "100011000", "F": "001011000",
+    "G": "000001101", "H": "100001100",
+    "I": "001001100", "J": "000011100",
+    "K": "100000011", "L": "001000011",
+    "M": "101000010", "N": "000010011",
+    "O": "100010010", "P": "001010010",
+    "Q": "000000111", "R": "100000110",
+    "S": "001000110", "T": "000010110",
+    "U": "110000001", "V": "011000001",
+    "W": "111000000", "X": "010010001",
+    "Y": "110010000", "Z": "011010000",
+    "0": "000110100", "1": "100100001",
+    "2": "001100001", "3": "101100000",
+    "4": "000110001", "5": "100110000",
+    "6": "001110000", "7": "000100101",
+    "8": "100100100", "9": "001100100",
+    " ": "011000100", "-": "010000101",
+    "$": "010101000", "%": "000101010",
+    ".": "110000100", "/": "010100010",
+    "+": "010001010", "*": "010010100"
+}
+\end{minted}
+
+To convert a string, we map each character to its corresponding binary representation and join the resulting codes with "0" in between.
+
+\begin{minted}[frame=single]{python}
+def code39(text):
+    text = text.upper()
+    text = map(lambda c: code39_dict[c], text)
+    return "0".join(text)
+\end{minted}
+
+We will also need a function to render the barcode. For this, we will use the Pygame module.
+
+\begin{minted}[frame=single]{python}
+def draw_barcode(barcode, win):
+    barcode = list(map(int, barcode))
+    width = win.get_width()*0.8
+    height = win.get_height()*0.5
+    thicks = sum(barcode)
+    thins = len(barcode)-thicks
+    bar_w = width/(thicks*2+thins)
+
+    win.fill((255,255,255))
+    x = win.get_width()*0.1
+    y = win.get_height()*0.25
+
+    for i, c in enumerate(barcode):
+        w = 2*bar_w if c else bar_w
+        if i%2 == 0:
+            pygame.draw.rect(win, (0,0,0), [x, y, w, height])
+
+        x += w
+\end{minted}
+
+The full python script can be found in appendix \ref{app:code39_py} or on \hreffn{https://github.com/LordBaryhobal/5D\_Heredero\_Louis\_TM2022/blob/main/python/code39.py}{GitHub}.
+
+\subsection{EAN-8}
+\label{ssec:ean8_py}
+
+The first step to create an EAN-8 barcode is to compute the check digit with Luhn's formula.
+To make this function also usable for EAN-13, we need to redefine the formula as such:
+
+\begin{enumerate}
+  \item Multiply each digit by the alternating factors 1 and 3 starting with 3 \textbf{from the end}.
+
+  \item Add them together then take the modulo ten and subtract the result from 10.
+
+  \item If the result is equal to 10, change it to 0.
+\end{enumerate}
+
+%Since this function will also be used for EAN-13, with only the factors changing, we will make it general enough.
+
+In python, the function multiplies the i\textsuperscript{th} to last digit by: \[
+  \text{factor} = 3 - (i\ mod\ 2) * 2
+\]
+which basicly is step 1 above.
+
+\def\arraystretch{1.5}
+\begin{table}[H]
+  \centering
+  \begin{tabu}{|[2pt]c|[2pt]c|c|c|c|c|c|[2pt]}
+    \tabucline[2pt]{-}
+    i & ... & 4 & 3 & 2 & 1 & 0 \\
+    \hline
+    factor & ... & 3 & 1 & 3 & 1 & 3 \\
+    \tabucline[2pt]{-}
+  \end{tabu}
+  \caption{Python Luhn formula example}
+  \label{tab:luhn_py_ex}
+\end{table}
+\def\arraystretch{1}
+
+%\begin{minipage}{\linewidth}
+\begin{minted}[frame=single]{python}
+def luhn(digits):
+    checksum = sum([
+        digits[-i-1]*(3-i%2*2)
+        for i in range(len(digits))
+    ])
+    ctrl_key = 10 - checksum%10
+    if ctrl_key == 10:
+        ctrl_key = 0
+
+    return ctrl_key
+\end{minted}
+%\end{minipage}
+
+Both code types also need the table of elements:
+
+\begin{minted}[frame=single]{python}
+A = [
+    0b0001101,
+    0b0011001,
+    0b0010011,
+    0b0111101,
+    0b0100011,
+    0b0110001,
+    0b0101111,
+    0b0111011,
+    0b0110111,
+    0b0001011
+]
+
+# XOR 0b1111111
+C = list(map(lambda a: a^127, A))
+
+# Reverse bit order
+B = list(map(lambda c: int(f"{c:07b}"[::-1], 2), C))
+\end{minted}
+
+The following function converts a number to the list of its bits:
+\begin{minted}[frame=single]{python}
+def bin_list(n):
+    return list(map(int, f"{n:07b}"))
+\end{minted}
+
+Finally, the encoding function:
+\begin{minted}[frame=single]{python}
+def ean8(digits):
+    digits.append(luhn(digits))
+    elmts = []
+
+    elmts += [1,0,1] #delimiter
+    for digit in digits[:4]:
+        elmts += bin_list(A[digit])
+
+    elmts += [0,1,0,1,0] #middle delimiter
+    for digit in digits[4:]:
+        elmts += bin_list(C[digit])
+
+    elmts += [1,0,1] #delimiter
+    return elmts
+\end{minted}
+
+We will use a similar function as in \autoref{ssec:code39_py} to render the barcode
+
+\begin{minted}[frame=single]{python}
+def draw_barcode(barcode, win):
+    width = win.get_width()*0.8
+    height = win.get_height()*0.5
+    bar_w = width/len(barcode)
+
+    win.fill((255,255,255))
+    x = win.get_width()*0.1
+    y = win.get_height()*0.25
+
+    for c in barcode:
+        if c:
+            pygame.draw.rect(win, (0,0,0), [x, y, bar_w, height])
+
+        x += bar_w
+\end{minted}
+
+The full python script can be found in appendix \ref{app:ean_py} or on \hreffn{https://github.com/LordBaryhobal/5D\_Heredero\_Louis\_TM2022/blob/main/python/ean.py}{GitHub}
+
+\subsection{EAN-13}
+\label{ssec:ean13_py}
+
+The main difference with EAN-8 is the encoding of the first digit, using an A/B pattern. We will create a list of these patterns:
+
+\begin{minted}[frame=single]{python}
+ean13_patterns = [
+    "AAAAAA",
+    "AABABB",
+    "AABBAB",
+    "AABBBA",
+    "ABAABB",
+    "ABBAAB",
+    "ABBBAA",
+    "ABABAB",
+    "ABABBA",
+    "ABBABA"
+]
+\end{minted}
+
+And the appropriate encoding function:
+
+\begin{minted}[frame=single]{python}
+def ean13(digits):
+    pattern = ean13_patterns[digits[0]]
+    digits.append(luhn(digits))
+    elmts = []
+
+    elmts += [1,0,1] #delimiter
+    for d in range(1,7):
+        _ = A if pattern[d-1] == "A" else B
+        digit = digits[d]
+        elmts += bin_list(_[digit])
+
+    elmts += [0,1,0,1,0] #middle delimiter
+    for digit in digits[7:]:
+        elmts += bin_list(C[digit])
+
+    elmts += [1,0,1] #delimiter
+    return elmts
+\end{minted}
+
+The full python script can be found in appendix \ref{app:ean_py} or on \hreffn{https://github.com/LordBaryhobal/5D\_Heredero\_Louis\_TM2022/blob/main/python/ean.py}{GitHub}
