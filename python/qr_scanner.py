@@ -10,8 +10,6 @@ import cv2
 import numpy as np
 from math import sqrt, degrees, atan2, radians, cos, sin
 import imutils
-import matplotlib.pyplot as plt
-from PIL import Image
 
 DB_WIN = False
 

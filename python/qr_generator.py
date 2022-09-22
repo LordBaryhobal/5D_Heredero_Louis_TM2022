@@ -3,7 +3,6 @@
 import numpy as np
 import pygame
 import time
-import sys
 
 S_EMPTY = 1
 S_SEP = 2
